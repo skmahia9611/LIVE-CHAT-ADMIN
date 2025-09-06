@@ -49,6 +49,15 @@
         }
         .btn-gradient:hover { box-shadow: 0 6px 20px rgba(70, 130, 180, 0.3); }
         .btn-gradient:active { transform: scale(0.96); }
+        .btn-secondary {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-weight: bold;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-secondary:hover { background-color: #3a3a3a; }
+        .btn-secondary:active { transform: scale(0.96); }
         .input-field { 
             background-color: var(--bg-tertiary); 
             border: 1px solid #444;
@@ -83,7 +92,7 @@
 </head>
 <body class="max-w-md mx-auto h-screen overflow-hidden">
 
-    <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+    <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" style="display: none;">
         <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#4682B4]"></div>
     </div>
 
@@ -92,12 +101,21 @@
             <div class="text-center mb-6">
                 <i data-lucide="message-square-heart" class="w-16 h-16 text-[#87CEEB] mx-auto"></i>
                 <h1 class="text-3xl font-extrabold text-accent-gradient mt-4">Support Chat</h1>
-                <p class="text-gray-400 mt-1">Please log in to continue</p>
+                <p class="text-gray-400 mt-1">Get started or log in as admin</p>
             </div>
+            
+            <button id="guest-login-btn" class="w-full p-3 rounded-lg btn-secondary mb-4">Start Support Chat</button>
+
+            <div class="flex items-center my-4">
+                <hr class="flex-grow border-gray-600">
+                <span class="px-2 text-gray-500 text-sm">Admin</span>
+                <hr class="flex-grow border-gray-600">
+            </div>
+
             <div id="auth-container">
-                <input id="login-email" type="email" placeholder="Email" class="w-full p-3 rounded-lg input-field mb-4">
+                <input id="login-email" type="email" placeholder="Admin Email" class="w-full p-3 rounded-lg input-field mb-4">
                 <input id="login-password" type="password" placeholder="Password" class="w-full p-3 rounded-lg input-field mb-4">
-                <button id="login-btn" class="w-full p-3 rounded-lg btn-gradient mb-4">Login</button>
+                <button id="login-btn" class="w-full p-3 rounded-lg btn-gradient">Admin Login</button>
             </div>
         </div>
     </div>
@@ -173,19 +191,19 @@
         // =================================================================================
         // ধাপ ১: আপনার অ্যাডমিন User ID এখানে বসান
         //==================================================================================
-        const ADMIN_UID = "3eCjj6WOyTfa5N9W9GBrKVjvqNs1"; 
+        const ADMIN_UID = ""; 
 
         // =================================================================================
         // ধাপ ২: আপনার নিজের Firebase কনফিগারেশন এখানে পেস্ট করুন
         // =================================================================================
         const firebaseConfig = {
-          apiKey: "AIzaSyBP3OLSykSzQFEEQLDkDO7_rVg-PkY81C0",
-          authDomain: "mail-shop-e2256.firebaseapp.com",
-          databaseURL: "https://mail-shop-e2256-default-rtdb.firebaseio.com",
-          projectId: "mail-shop-e2256",
-          storageBucket: "mail-shop-e2256.firebasestorage.app",
-          messagingSenderId: "985793375010",
-          appId: "1:985793375010:web:2a9afc1aeec74168d2137b"
+            apiKey: "AIzaSyApc8_tOZSoOvIISX65kc-wr2RrV3nEgJE",
+            authDomain: "admin-1feb9.firebaseapp.com",
+            databaseURL: "https://admin-1feb9-default-rtdb.firebaseio.com",
+            projectId: "admin-1feb9",
+            storageBucket: "admin-1feb9.firebasestorage.app",
+            messagingSenderId: "752502188369",
+            appId: "1:752502188369:web:3346f5659c5fcf32178b70"
         };
         
         // =================================================================================
@@ -212,6 +230,15 @@
             catch (e) { console.warn("Telegram WebApp script not found."); }
             lucide.createIcons();
             setupEventListeners();
+            loader.style.display = 'flex';
+
+            // নতুন পরিবর্তন: যদি ADMIN_UID না থাকে তাহলে অ্যাডমিন লগইন ফর্ম 숨기기
+            if (!ADMIN_UID) {
+                document.getElementById('auth-container').style.display = 'none';
+                const separator = document.querySelector('#auth-section .flex.items-center.my-4');
+                if (separator) separator.style.display = 'none';
+            }
+            
             onAuthStateChanged(auth, handleAuthStateChange);
         };
 
@@ -231,12 +258,19 @@
                     initializeAppUser();
                 }
             } else {
-                try {
-                    await signInAnonymously(auth);
-                } catch(error) {
-                    console.error("Anonymous sign-in failed: ", error);
-                    alert("Chat session could not be started. Please refresh the page.");
+                // নতুন পরিবর্তন: এখানে মূল লজিকটি পরিবর্তন করা হয়েছে
+                if (ADMIN_UID) {
+                    // আগের মতো অ্যাডমিন আইডি সেট করা থাকলে, লগইন পেজ দেখানো হবে
+                    showMainPage('auth-section');
                     loader.style.display = 'none';
+                } else {
+                    // অ্যাডমিন আইডি সেট করা না থাকলে, সরাসরি গেস্ট হিসেবে লগইন করানো হবে
+                    // ব্যবহারকারী কোনো লগইন পেজ দেখবে না
+                    signInAnonymously(auth).catch(error => {
+                        console.error("Auto anonymous sign-in failed: ", error);
+                        alert("Could not start chat automatically. Please refresh.");
+                        loader.style.display = 'none';
+                    });
                 }
             }
         }
@@ -247,13 +281,14 @@
             const userSnap = await getDoc(userRef);
 
             if (!userSnap.exists()) {
-                let name = currentUser.isAnonymous ? `Guest-${currentUser.uid.substring(0, 5)}` : currentUser.email.split('@')[0];
+                let name = currentUser.isAnonymous ? `Guest-${currentUser.uid.substring(0, 5)}` : (currentUser.email ? currentUser.email.split('@')[0] : 'Admin');
                 const defaultData = { name: name, email: currentUser.email, photoURL: null };
                 await setDoc(userRef, defaultData); 
                 userData = defaultData;
             } else { 
                 userData = userSnap.data(); 
             }
+            if (!currentUser.isAnonymous) return;
             updateUserProfileUI();
         }
 
@@ -261,12 +296,17 @@
             if (!userData) return;
             const profilePicEl = document.getElementById('user-profile-pic');
             const nameToUse = userData.name || 'G';
-            profilePicEl.src = userData.photoURL || `https://ui-avatars.com/api/?name=${nameToUse.charAt(0)}&background=random&color=fff`;
+            profilePicEl.src = userData.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(nameToUse.charAt(0))}&background=random&color=fff`;
         }
         
         function initializeAppUser() {
-            document.getElementById('logout-btn-user').style.display = 'none';
-            document.getElementById('auth-section').classList.remove('active');
+            // নতুন পরিবর্তন: গেস্ট হলে লগআউট বাটন লুকানো হবে
+            if (currentUser && currentUser.isAnonymous) {
+                document.getElementById('logout-btn-user').style.display = 'none';
+            } else {
+                document.getElementById('logout-btn-user').style.display = 'block';
+            }
+
             document.getElementById('admin-panel-view').classList.add('hidden');
             document.getElementById('user-chat-view').classList.remove('hidden');
             document.getElementById('user-chat-view').classList.add('flex');
@@ -275,10 +315,10 @@
             loader.style.display = 'none';
         }
 
-        // পরিবর্তিত কোড: listenForAdminStatus ফাংশনে এরর হ্যান্ডলিং যোগ করা হয়েছে
         function listenForAdminStatus() {
             if (!ADMIN_UID) {
-                console.warn("ADMIN_UID is not set. Admin status will not be available.");
+                // ADMIN_UID না থাকলে স্ট্যাটাস দেখানোর প্রয়োজন নেই
+                document.getElementById('admin-status').style.display = 'none';
                 return;
             };
             if (adminStatusListener) adminStatusListener();
@@ -303,7 +343,6 @@
                     statusEl.innerHTML = '<span class="text-gray-500">●</span> Offline';
                 }
             }, (error) => {
-                // এরর হলে UI তে দেখানো হবে
                 console.error("Error listening to admin status:", error);
                 isAdminOnline = false;
                 statusEl.innerHTML = '<span class="text-red-500">●</span> Status Error';
@@ -322,7 +361,6 @@
         }
         
         function initializeAppAdmin() {
-            document.getElementById('auth-section').classList.remove('active');
             document.getElementById('user-chat-view').classList.add('hidden');
             document.getElementById('admin-panel-view').classList.remove('hidden');
             document.getElementById('admin-panel-view').classList.add('flex');
@@ -456,9 +494,8 @@
             if (fromUser) {
                 chatMetadata.userName = userData.name;
                 chatMetadata.userPhotoURL = userData.photoURL || null;
-            } else {
-                chatMetadata.userName = document.getElementById('admin-chat-header').textContent;
             }
+            
             await setDoc(doc(db, 'support_chats', chatUID), chatMetadata, { merge: true });
         }
 
@@ -489,16 +526,21 @@
         }
 
         function setupEventListeners() {
-            [ 'logout-btn-user', 'logout-btn-admin' ].forEach(id => document.getElementById(id).addEventListener('click', () => signOut(auth).then(() => {
-                if(id === 'logout-btn-admin') {
-                     showMainPage('auth-section');
-                } else {
-                    window.location.reload();
-                }
-            })));
+            [ 'logout-btn-user', 'logout-btn-admin' ].forEach(id => document.getElementById(id).addEventListener('click', () => signOut(auth)));
             
             document.getElementById('login-btn').addEventListener('click', handleLogin);
             
+            document.getElementById('guest-login-btn').addEventListener('click', async () => {
+                loader.style.display = 'flex';
+                try {
+                    await signInAnonymously(auth);
+                } catch(error) {
+                    console.error("Anonymous sign-in failed: ", error);
+                    alert("Could not start chat session. Please refresh the page.");
+                    loader.style.display = 'none';
+                }
+            });
+
             document.getElementById('user-profile-pic-wrapper').addEventListener('click', () => document.getElementById('profile-pic-input').click());
             document.getElementById('profile-pic-input').addEventListener('change', (e) => {
                 if(e.target.files[0]) handleProfilePictureUpload(e.target.files[0]);
@@ -536,7 +578,7 @@
                 }
             };
             userSendBtn.addEventListener('click', userSend);
-            userInp.addEventListener('keypress', (e) => { if (e.key === 'Enter') userSend(); });
+            userInp.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); userSend(); } });
             document.getElementById('user-attach-btn').addEventListener('click', () => document.getElementById('user-file-input').click());
             document.getElementById('user-file-input').addEventListener('change', (e) => { if(e.target.files[0]) handleFileUpload(e.target.files[0]); e.target.value = null; });
 
@@ -550,7 +592,7 @@
                 await setDoc(chatRef, { autoReplySent: false }, { merge: true });
             };
             adminSendBtn.addEventListener('click', adminSend);
-            adminInp.addEventListener('keypress', (e) => { if (e.key === 'Enter') adminSend(); });
+            adminInp.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); adminSend(); } });
         }
 
         async function handleLogin() {
@@ -558,7 +600,12 @@
             if (!email || !pass) return alert("Please enter email and password.");
             loader.style.display = 'flex';
             try { 
-                await signInWithEmailAndPassword(auth, email, pass);
+                const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+                if (userCredential.user.uid !== ADMIN_UID) {
+                    await signOut(auth);
+                    alert("Login Failed: This is not an admin account.");
+                    loader.style.display = 'none';
+                }
             } 
             catch (error) { 
                 alert("Login failed: " + error.message); 
